@@ -52,10 +52,10 @@ def server_ip(bot, update):
     user = update.message.from_user
 
     # gather telegram user ID
-    user_id = update.effective_user.id
+    tg_user_id = update.effective_user.id
 
     # check if the sender's ID is the same as the owner's ID set in the config. for security purposes
-    if user_id == owner_id:
+    if tg_user_id == owner_id:
 
         #access the site
         res = requests.get("http://ipinfo.io/ip")
@@ -70,27 +70,27 @@ def server_ip(bot, update):
 # ---
 
 def add_url(bot, update, args):
-    # check if there is anything written as arguments
+    # check if there is anything written as argument (will give out of range if there's no argument)
     if len(args[0]) < 3:
         # there's nothing written or it's too less text to be an actual URL
         update.effective_message.reply_text(strings.stringInvalidURL)
     else:
         # there is an actual URL written
 
-        # gathers telegram user ID
-        user_id = update.effective_user.id
+        # gather telegram user ID
+        tg_user_id = update.effective_user.id
 
-        # gathers telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
-        chat_id = str(update.effective_chat.id)
+        # gather telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
+        tg_chat_id = str(update.effective_chat.id)
 
-        # gathers the URL from the command sent by the user
-        url = args[0]
+        # gather the feed URL from the command sent by the user
+        tg_feed_url = args[0]
 
-        #sets OldEntry as "none" to be stored in the DB so it can later be changed when updates occur
-        OldEntry = 'none'
+        #set old_entry_title as "none" to be stored in the DB so it can later be changed when updates occur
+        tg_old_entry_title = 'none'
 
         # pass the URL to be processed by feedparser
-        url_processed = feedparser.parse(url)
+        url_processed = feedparser.parse(tg_feed_url)
 
         # check if URL is a valid RSS Feed URL
         if url_processed.bozo == 1:
@@ -100,7 +100,7 @@ def add_url(bot, update, args):
             # the RSS Feed URL is valid
 
             # gather the row which contains exactly that telegram user ID, group ID and URL for later comparison
-            res = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == user_id, RSS_Feed.url == url, RSS_Feed.chat_id == chat_id).all()
+            res = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.feed_url == tg_feed_url, RSS_Feed.chat_id == tg_chat_id).all()
 
             # check if there is an entry already added to the DB by the same user in the same group with the same URL
             if res:
@@ -110,7 +110,7 @@ def add_url(bot, update, args):
                 # there is no link added, so we'll add it now
 
                 # prepare the action for the DB push
-                action = RSS_Feed(user_id, chat_id, url, OldEntry)
+                action = RSS_Feed(tg_user_id, tg_chat_id, tg_feed_url, tg_old_entry_title)
 
                 # add the action to the DB query
                 SESSION.add(action)
@@ -120,41 +120,42 @@ def add_url(bot, update, args):
 
                 update.effective_message.reply_text(strings.stringURLadded)
 
-                print("\n" + "###" + "\n" + "# New subscription for user " + user_id + " with URL " + url + "\n" + "###" + "\n")
+                print("\n" + "###" + "\n" + "# New subscription for user " + str(tg_user_id) + " with URL " + tg_feed_url + "\n" + "###" + "\n")
 
 
 def remove_url(bot, update, args):
-    # check if there is anything written as arguments
+    # check if there is anything written as argument (will give out of range if there's no argument)
     if len(args[0]) < 3:
         # there's nothing written or it's too less text to be an actual URL
         update.effective_message.reply_text(strings.stringInvalidURL)
     else:
-        # gathers telegram user ID
-        user_id = update.effective_user.id
+        # gather telegram user ID
+        tg_user_id = update.effective_user.id
 
-        # gathers telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
-        chat_id = str(update.message.chat_id)
+        # gather telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
+        tg_chat_id = str(update.message.chat_id)
 
-        # gathers the URL from the command sent by the user
-        url = args[0]
+        # gather the feed URL from the command sent by the user
+        tg_feed_url = args[0]
 
         # pass the URL to be processed by feedparser
-        url_processed = feedparser.parse(url)
+        url_processed = feedparser.parse(tg_feed_url)
 
         # check if URL is a valid RSS Feed URL
         if url_processed.bozo == 1:
             # it's not a valid RSS Feed URL
             update.effective_message.reply_text(strings.stringInvalidURLbozo)
         else:
-            # it's a valid RSS Feed URL
+            # the RSS Feed URL is valid
 
-            # gather all duplicates(if possible) for the same User ID, Chat ID and URL
-            user_data = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == user_id, RSS_Feed.chat_id == chat_id, RSS_Feed.url == url).all()
+            # gather all duplicates (if possible) for the same TG User ID, TG Chat ID and URL
+            user_data = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.chat_id == tg_chat_id, RSS_Feed.feed_url == tg_feed_url).all()
 
             # check if it finds the URL in the database
             if user_data:
+                # there is an URL in the DB
 
-                # this loops to delete any possible duplicates for the same User ID, Chat ID and URL
+                # this loops to delete any possible duplicates for the same TG User ID, TG Chat ID and URL
                 for i in user_data:
                     # add the action to the DB query
                     SESSION.delete(i)
@@ -175,47 +176,46 @@ def rss_update(bot, job):
     for row in user_data:
 
         # get user/chat ID from DB
-        user_id = row.chat_id
+        tg_user_id = row.chat_id
 
         # get RSS URL from DB
-        url = row.url
+        tg_feed_url = row.feed_url
 
-        # process the feed
-        feed_processed = feedparser.parse(url)
+        # process the feed from DB
+        feed_processed = feedparser.parse(tg_feed_url)
 
         #get the last update's entry from the DB
-        OldEntry = row.old_entry
+        rss_old_entry_title = row.old_entry_title
 
         # define empty list for when there's new updates to a RSS URL
-        QueuedLinks = []
+        new_links = []
 
         # this loop checks for every entry from the RSS Feed URL from the DB row
         for entry in feed_processed.entries:
             # check if there are any new updates to the RSS Feed from the old entry
-            if entry.link != OldEntry:
+            if entry.link != rss_old_entry_title:
 
-                # there is a new entry, so it's link is added to the QueuedLinks list for later usage
-                QueuedLinks.append(entry.link)
+                # there is a new entry, so it's link is added to the new_links list for later usage
+                new_links.append(entry.link)
             else:
                 break
         # check if there's any new entries queued from the last check
-        if QueuedLinks:
+        if new_links:
 
-            # set the new old_entry with the latest update from the RSS Feed
-            row.old_entry = QueuedLinks[0]
+            # set the new old_entry_title with the latest update from the RSS Feed
+            row.old_entry_title = new_links[0]
 
             # commit the changes to the DB
             SESSION.commit()
         else:
-            print("\n" + "###" + "\n" + "# No new updates for chat " + str(user_id) + " with URL " + url + "\n" + "###" + "\n")
+            print("\n" + "###" + "\n" + "# No new updates for chat " + str(tg_user_id) + " with URL " + tg_feed_url + "\n" + "###" + "\n")
 
         # this loop sends every new update to each user from each group based on the DB
-        for entry in QueuedLinks[::-1]:
-
+        for link in new_links[::-1]:
             # make the final message with the layout: "Title: <rss_feed_title> and Link: <rss_feed_link>"
-            final_message = "title: \"" + entry.title + "\"" + "\n\n" + "link: " + entry
+            final_message = "title: \"" + "none-placeholder" + "\"" + "\n\n" + "link: " + link
 
-            bot.send_message(chat_id=user_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
+            bot.send_message(chat_id=tg_user_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
 
 
 # ---
@@ -243,17 +243,17 @@ class RSS_Feed(BASE):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False)
     chat_id = Column(UnicodeText, nullable=False)
-    url = Column(UnicodeText)
-    old_entry = Column(UnicodeText)
+    feed_url = Column(UnicodeText)
+    old_entry_title = Column(UnicodeText)
 
-    def __init__(self, user_id, chat_id, url, old_entry):
+    def __init__(self, user_id, chat_id, feed_url, old_entry_title):
         self.user_id = user_id
         self.chat_id = chat_id
-        self.url = url
-        self.old_entry = old_entry
+        self.feed_url = feed_url
+        self.old_entry_title = old_entry_title
 
     def __repr__(self):
-        return "<RSS_Feed for {} with chatID {} at url {} with old entry {}>".format(self.user_id, self.chat_id, self.url, self.old_entry)
+        return "<RSS_Feed for {} with chatID {} at feed_url {} with old entry {}>".format(self.user_id, self.chat_id, self.feed_url, self.old_entry_title)
 
 
 BASE.metadata.create_all()
