@@ -126,7 +126,7 @@ def add_url(bot, update, args):
             # the RSS Feed link is valid
 
             # gather the row which contains exactly that telegram user ID, group ID and link for later comparison
-            res = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.feed_url == tg_feed_link, RSS_Feed.chat_id == tg_chat_id).all()
+            res = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.feed_link == tg_feed_link, RSS_Feed.chat_id == tg_chat_id).all()
 
             # check if there is an entry already added to the DB by the same user in the same group with the same link
             if res:
@@ -177,7 +177,7 @@ def remove_url(bot, update, args):
             # the RSS Feed link is valid
 
             # gather all duplicates (if possible) for the same TG User ID, TG Chat ID and link
-            user_data = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.chat_id == tg_chat_id, RSS_Feed.feed_url == tg_feed_link).all()
+            user_data = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.chat_id == tg_chat_id, RSS_Feed.feed_link == tg_feed_link).all()
 
             # check if it finds the link in the database
             if user_data:
@@ -206,7 +206,7 @@ def rss_update(bot, job):
         tg_chat_id = row.chat_id
 
         # get RSS link from DB
-        tg_feed_link = row.feed_url
+        tg_feed_link = row.feed_link
 
         # process the feed from DB
         feed_processed = feedparser.parse(tg_feed_link)
@@ -282,17 +282,17 @@ class RSS_Feed(BASE):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False)
     chat_id = Column(UnicodeText, nullable=False)
-    feed_url = Column(UnicodeText)
+    feed_link = Column(UnicodeText)
     old_entry_link = Column(UnicodeText)
 
-    def __init__(self, user_id, chat_id, feed_url, old_entry_link):
+    def __init__(self, user_id, chat_id, feed_link, old_entry_link):
         self.user_id = user_id
         self.chat_id = chat_id
-        self.feed_url = feed_url
+        self.feed_link = feed_link
         self.old_entry_link = old_entry_link
 
     def __repr__(self):
-        return "<RSS_Feed for {} with chatID {} at feed_url {} with old entry {}>".format(self.user_id, self.chat_id, self.feed_url, self.old_entry_link)
+        return "<RSS_Feed for {} with chatID {} at feed_link {} with old entry {}>".format(self.user_id, self.chat_id, self.feed_link, self.old_entry_link)
 
 
 BASE.metadata.create_all()
