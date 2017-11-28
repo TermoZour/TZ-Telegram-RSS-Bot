@@ -2,7 +2,7 @@ errorMessage = "Oh dang! An error has occured."
 errorUnknownCommand = "I'm sorry, I don't know this command. Type /help for a list of commands."
 errorNoFile = "Either file is missing or is not readable. Creating."
 errorCommand = "Unknown command."
-
+errorAdmin = "You must be an admin to issue this command"
 
 stringHelp = "Type /help for a list of commands."
 
