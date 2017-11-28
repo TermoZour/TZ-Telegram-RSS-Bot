@@ -23,7 +23,7 @@ config = configparser.ConfigParser()
 config.read("properties.ini")
 
 # getting bot owner ID from config file
-owner_id = int(config.get("ADMIN", "admin_id"))
+owner_id = int(config.get("OWNER", "owner_id"))
 
 # ---
 
@@ -69,13 +69,39 @@ def server_ip(bot, update):
 
 # ---
 
+def show_url(bot, update, args):
+    # gather telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
+    tg_chat_id = str(update.effective_chat.id)
+
+    # check if there is anything written as argument (will give out of range if there's no argument)
+    if len(args[0]) < 3:
+        # there's nothing written or it's too less text to be an actual link
+        update.effective_message.reply_text(strings.stringInvalidURL)
+    else:
+        # there is an actual link written
+
+        tg_feed_link = args[0]
+        link_processed = feedparser.parse(tg_feed_link)
+
+        feed_title = link_processed.feed.title
+        feed_description = link_processed.feed.description
+        feed_link = link_processed.feed.link
+
+        entry_title = link_processed.entries[0].title
+        entry_description = link_processed.entries[0].description
+        entry_link = link_processed.entries[0].link
+
+        final_message = "feed title: " + feed_title + "\n\n" + "feed description: " + feed_description + "\n\n" + "feed link: " + feed_link + "\n\n" + "entry title: " + entry_title + "\n\n" + "entry description: " + entry_description + "\n\n" + "entry link: " + entry_link
+        bot.send_message(chat_id=tg_chat_id, text=final_message)
+
+
 def add_url(bot, update, args):
     # check if there is anything written as argument (will give out of range if there's no argument)
     if len(args[0]) < 3:
-        # there's nothing written or it's too less text to be an actual URL
+        # there's nothing written or it's too less text to be an actual link
         update.effective_message.reply_text(strings.stringInvalidURL)
     else:
-        # there is an actual URL written
+        # there is an actual link written
 
         # gather telegram user ID
         tg_user_id = update.effective_user.id
@@ -83,26 +109,26 @@ def add_url(bot, update, args):
         # gather telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
         tg_chat_id = str(update.effective_chat.id)
 
-        # gather the feed URL from the command sent by the user
-        tg_feed_url = args[0]
+        # gather the feed link from the command sent by the user
+        tg_feed_link = args[0]
 
         #set old_entry_title as "none" to be stored in the DB so it can later be changed when updates occur
         tg_old_entry_title = 'none'
 
-        # pass the URL to be processed by feedparser
-        url_processed = feedparser.parse(tg_feed_url)
+        # pass the link to be processed by feedparser
+        link_processed = feedparser.parse(tg_feed_link)
 
-        # check if URL is a valid RSS Feed URL
-        if url_processed.bozo == 1:
-            # it's not a valid RSS Feed URL
+        # check if link is a valid RSS Feed link
+        if link_processed.bozo == 1:
+            # it's not a valid RSS Feed link
             update.effective_message.reply_text(strings.stringInvalidURLbozo)
         else:
-            # the RSS Feed URL is valid
+            # the RSS Feed link is valid
 
-            # gather the row which contains exactly that telegram user ID, group ID and URL for later comparison
-            res = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.feed_url == tg_feed_url, RSS_Feed.chat_id == tg_chat_id).all()
+            # gather the row which contains exactly that telegram user ID, group ID and link for later comparison
+            res = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.feed_url == tg_feed_link, RSS_Feed.chat_id == tg_chat_id).all()
 
-            # check if there is an entry already added to the DB by the same user in the same group with the same URL
+            # check if there is an entry already added to the DB by the same user in the same group with the same link
             if res:
                 # there is already a link added to the DB
                 update.effective_message.reply_text(strings.stringURLalreadyAdded)
@@ -110,7 +136,7 @@ def add_url(bot, update, args):
                 # there is no link added, so we'll add it now
 
                 # prepare the action for the DB push
-                action = RSS_Feed(tg_user_id, tg_chat_id, tg_feed_url, tg_old_entry_title)
+                action = RSS_Feed(tg_user_id, tg_chat_id, tg_feed_link, tg_old_entry_title)
 
                 # add the action to the DB query
                 SESSION.add(action)
@@ -120,42 +146,44 @@ def add_url(bot, update, args):
 
                 update.effective_message.reply_text(strings.stringURLadded)
 
-                print("\n" + "###" + "\n" + "# New subscription for user " + str(tg_user_id) + " with URL " + tg_feed_url + "\n" + "###" + "\n")
+                print("\n" + "###" + "\n" + "# New subscription for user " + str(tg_user_id) + " with link " + tg_feed_link + "\n" + "###" + "\n")
 
 
 def remove_url(bot, update, args):
     # check if there is anything written as argument (will give out of range if there's no argument)
     if len(args[0]) < 3:
-        # there's nothing written or it's too less text to be an actual URL
+        # there's nothing written or it's too less text to be an actual link
         update.effective_message.reply_text(strings.stringInvalidURL)
     else:
+        # there is an actual link written
+
         # gather telegram user ID
         tg_user_id = update.effective_user.id
 
         # gather telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
-        tg_chat_id = str(update.message.chat_id)
+        tg_chat_id = str(update.effective_chat_id)
 
-        # gather the feed URL from the command sent by the user
-        tg_feed_url = args[0]
+        # gather the feed link from the command sent by the user
+        tg_feed_link = args[0]
 
-        # pass the URL to be processed by feedparser
-        url_processed = feedparser.parse(tg_feed_url)
+        # pass the link to be processed by feedparser
+        link_processed = feedparser.parse(tg_feed_link)
 
-        # check if URL is a valid RSS Feed URL
-        if url_processed.bozo == 1:
-            # it's not a valid RSS Feed URL
+        # check if link is a valid RSS Feed link
+        if link_processed.bozo == 1:
+            # it's not a valid RSS Feed link
             update.effective_message.reply_text(strings.stringInvalidURLbozo)
         else:
-            # the RSS Feed URL is valid
+            # the RSS Feed link is valid
 
-            # gather all duplicates (if possible) for the same TG User ID, TG Chat ID and URL
-            user_data = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.chat_id == tg_chat_id, RSS_Feed.feed_url == tg_feed_url).all()
+            # gather all duplicates (if possible) for the same TG User ID, TG Chat ID and link
+            user_data = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.chat_id == tg_chat_id, RSS_Feed.feed_url == tg_feed_link).all()
 
-            # check if it finds the URL in the database
+            # check if it finds the link in the database
             if user_data:
-                # there is an URL in the DB
+                # there is an link in the DB
 
-                # this loops to delete any possible duplicates for the same TG User ID, TG Chat ID and URL
+                # this loops to delete any possible duplicates for the same TG User ID, TG Chat ID and link
                 for i in user_data:
                     # add the action to the DB query
                     SESSION.delete(i)
@@ -178,22 +206,22 @@ def rss_update(bot, job):
         # get user/chat ID from DB
         tg_user_id = row.chat_id
 
-        # get RSS URL from DB
-        tg_feed_url = row.feed_url
+        # get RSS link from DB
+        tg_feed_link = row.feed_url
 
         # process the feed from DB
-        feed_processed = feedparser.parse(tg_feed_url)
+        feed_processed = feedparser.parse(tg_feed_link)
 
         #get the last update's entry from the DB
-        rss_old_entry_title = row.old_entry_title
+        tg_old_entry_title = row.old_entry_title
 
-        # define empty list for when there's new updates to a RSS URL
+        # define empty list for when there's new updates to a RSS link
         new_links = []
 
-        # this loop checks for every entry from the RSS Feed URL from the DB row
+        # this loop checks for every entry from the RSS Feed link from the DB row
         for entry in feed_processed.entries:
             # check if there are any new updates to the RSS Feed from the old entry
-            if entry.link != rss_old_entry_title:
+            if entry.link != tg_old_entry_title:
 
                 # there is a new entry, so it's link is added to the new_links list for later usage
                 new_links.append(entry.link)
@@ -208,7 +236,7 @@ def rss_update(bot, job):
             # commit the changes to the DB
             SESSION.commit()
         else:
-            print("\n" + "###" + "\n" + "# No new updates for chat " + str(tg_user_id) + " with URL " + tg_feed_url + "\n" + "###" + "\n")
+            print("\n" + "###" + "\n" + "# No new updates for chat " + str(tg_user_id) + " with link " + tg_feed_link + "\n" + "###" + "\n")
 
         # this loop sends every new update to each user from each group based on the DB
         for link in new_links[::-1]:
@@ -267,7 +295,7 @@ def main():
 
     job = updater.job_queue
     job_minute = job.run_repeating(rss_update, int(config.get("UPDATE", "update_interval")), first=0)
-    job_minute.enabled = True
+    job_minute.enabled = False
 
     dispatcher = updater.dispatcher
 
@@ -275,7 +303,9 @@ def main():
     dispatcher.add_handler(CommandHandler("help", help))
     dispatcher.add_handler(CommandHandler("ip", server_ip))
 
+    dispatcher.add_handler(CommandHandler("url", show_url, pass_args=True))
     dispatcher.add_handler(CommandHandler("feed", rss_update))
+
     dispatcher.add_handler(CommandHandler("test", test))
 
     dispatcher.add_handler(CommandHandler("markdown", markdownTest))
