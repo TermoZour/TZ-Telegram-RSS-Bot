@@ -112,8 +112,8 @@ def add_url(bot, update, args):
         # gather the feed link from the command sent by the user
         tg_feed_link = args[0]
 
-        #set old_entry_title as "none" to be stored in the DB so it can later be changed when updates occur
-        tg_old_entry_title = 'none'
+        #set old_entry_link as "none" to be stored in the DB so it can later be changed when updates occur
+        tg_old_entry_link = 'none'
 
         # pass the link to be processed by feedparser
         link_processed = feedparser.parse(tg_feed_link)
@@ -136,7 +136,7 @@ def add_url(bot, update, args):
                 # there is no link added, so we'll add it now
 
                 # prepare the action for the DB push
-                action = RSS_Feed(tg_user_id, tg_chat_id, tg_feed_link, tg_old_entry_title)
+                action = RSS_Feed(tg_user_id, tg_chat_id, tg_feed_link, tg_old_entry_link)
 
                 # add the action to the DB query
                 SESSION.add(action)
@@ -146,7 +146,7 @@ def add_url(bot, update, args):
 
                 update.effective_message.reply_text(strings.stringURLadded)
 
-                print("\n" + "###" + "\n" + "# New subscription for user " + str(tg_user_id) + " with link " + tg_feed_link + "\n" + "###" + "\n")
+                print("\n" + "# New subscription for user " + str(tg_user_id) + " with link " + tg_feed_link + "\n")
 
 
 def remove_url(bot, update, args):
@@ -161,7 +161,7 @@ def remove_url(bot, update, args):
         tg_user_id = update.effective_user.id
 
         # gather telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
-        tg_chat_id = str(update.effective_chat_id)
+        tg_chat_id = str(update.effective_chat.id)
 
         # gather the feed link from the command sent by the user
         tg_feed_link = args[0]
@@ -202,9 +202,8 @@ def rss_update(bot, job):
 
     # this loop checks for every row in the DB
     for row in user_data:
-
-        # get user/chat ID from DB
-        tg_user_id = row.chat_id
+        # get telegram chat ID from DB
+        tg_chat_id = row.chat_id
 
         # get RSS link from DB
         tg_feed_link = row.feed_url
@@ -213,37 +212,49 @@ def rss_update(bot, job):
         feed_processed = feedparser.parse(tg_feed_link)
 
         #get the last update's entry from the DB
-        tg_old_entry_title = row.old_entry_title
+        tg_old_entry_link = row.old_entry_link
 
-        # define empty list for when there's new updates to a RSS link
-        new_links = []
+        # define empty list of entry links for when there's new updates to a RSS link
+        new_entry_links = []
+
+        # define empty list of entry titles for when there's new updates to a RSS link
+        new_entry_titles = []
 
         # this loop checks for every entry from the RSS Feed link from the DB row
         for entry in feed_processed.entries:
             # check if there are any new updates to the RSS Feed from the old entry
-            if entry.link != tg_old_entry_title:
+            if entry.link != tg_old_entry_link:
 
-                # there is a new entry, so it's link is added to the new_links list for later usage
-                new_links.append(entry.link)
+                # there is a new entry, so it's link is added to the new_entry_links list for later usage
+                new_entry_links.append(entry.link)
+
+                # there is a new entry, so it's title is added to the new_entry_titles list for later usage
+                new_entry_titles.append(entry.title)
             else:
                 break
-        # check if there's any new entries queued from the last check
-        if new_links:
 
-            # set the new old_entry_title with the latest update from the RSS Feed
-            row.old_entry_title = new_links[0]
+
+        # check if there's any new entries queued from the last check
+        if new_entry_links:
+
+            # set the new old_entry_link with the latest update from the RSS Feed
+            row.old_entry_link = new_entry_links[0]
 
             # commit the changes to the DB
             SESSION.commit()
         else:
-            print("\n" + "###" + "\n" + "# No new updates for chat " + str(tg_user_id) + " with link " + tg_feed_link + "\n" + "###" + "\n")
+            print("\n" + "# No new updates for chat " + str(tg_chat_id) + " with link " + tg_feed_link + "\n")
 
-        # this loop sends every new update to each user from each group based on the DB
-        for link in new_links[::-1]:
+        # this loop sends every new update to each user from each group based on the DB entries
+        for link, title in zip(new_entry_links[::-1], new_entry_titles[::-1]):
+            print("\n" + "new entry: ")
+            # print("\n" + link)
+            # print("\n" + title)
             # make the final message with the layout: "Title: <rss_feed_title> and Link: <rss_feed_link>"
-            final_message = "title: \"" + "none-placeholder" + "\"" + "\n\n" + "link: " + link
+            final_message = "title: \"" + title + "\"" + "\n\n" + "link: " + link
+            print("\n" + final_message + "\n")
 
-            bot.send_message(chat_id=tg_user_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
+            bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
 
 
 # ---
@@ -272,16 +283,16 @@ class RSS_Feed(BASE):
     user_id = Column(Integer, nullable=False)
     chat_id = Column(UnicodeText, nullable=False)
     feed_url = Column(UnicodeText)
-    old_entry_title = Column(UnicodeText)
+    old_entry_link = Column(UnicodeText)
 
-    def __init__(self, user_id, chat_id, feed_url, old_entry_title):
+    def __init__(self, user_id, chat_id, feed_url, old_entry_link):
         self.user_id = user_id
         self.chat_id = chat_id
         self.feed_url = feed_url
-        self.old_entry_title = old_entry_title
+        self.old_entry_link = old_entry_link
 
     def __repr__(self):
-        return "<RSS_Feed for {} with chatID {} at feed_url {} with old entry {}>".format(self.user_id, self.chat_id, self.feed_url, self.old_entry_title)
+        return "<RSS_Feed for {} with chatID {} at feed_url {} with old entry {}>".format(self.user_id, self.chat_id, self.feed_url, self.old_entry_link)
 
 
 BASE.metadata.create_all()
