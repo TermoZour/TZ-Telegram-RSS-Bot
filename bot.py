@@ -38,7 +38,7 @@ def unknown(bot, update):
 def help(bot, update):
 
     # gather all commands help messages from the strings.py file
-    help_all = strings.help_message
+    help_all = strings.help_message + strings.help_url + strings.help_list + strings.help_add + strings.help_remove
 
     update.effective_message.reply_text(text=help_all)
 
@@ -118,7 +118,7 @@ def list_urls(bot, update):
     # this neatly arranges the links from links_list to be properly sent by the bot
     final_content += "\n" + "\n\n".join(links_list)
 
-    bot.send_message(chat_id=tg_chat_id, text= "These are the links you're subscribed to here:" + "\n" + final_content)
+    bot.send_message(chat_id=tg_chat_id, text= "This chat is subscribed to the following links:" + "\n" + final_content)
 
 
 def add_url(bot, update, args):
@@ -141,7 +141,8 @@ def add_url(bot, update, args):
         # gather the feed link from the command sent by the user
         tg_feed_link = args[0]
 
-        if chat.get_member(tg_user_id).status == 'administrator' or tg_user_id == owner_id:
+        # check if the user who issued the command is the chat's admin or owner (to prevent spam)
+        if chat.get_member(tg_user_id).status == 'administrator' or chat.get_member(tg_user_id).status == 'owner' or tg_user_id == owner_id:
             # pass the link to be processed by feedparser
             link_processed = feedparser.parse(tg_feed_link)
 
@@ -200,7 +201,8 @@ def remove_url(bot, update, args):
         # gather the feed link from the command sent by the user
         tg_feed_link = args[0]
 
-        if chat.get_member(tg_user_id).status == 'administrator' or tg_user_id == owner_id:
+        # check if the user who issued the command is the chat's admin or owner (to prevent spam)
+        if chat.get_member(tg_user_id).status == 'administrator' or chat.get_member(tg_user_id).status == 'owner' or tg_user_id == owner_id:
             # pass the link to be processed by feedparser
             link_processed = feedparser.parse(tg_feed_link)
 
