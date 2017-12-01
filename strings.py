@@ -4,6 +4,8 @@ errorNoFile = "Either file is missing or is not readable. Creating."
 errorCommand = "Unknown command."
 errorAdmin = "You must be an admin to issue this command"
 
+errorMsgLong = "The message is too long to send"
+
 stringHelp = "Hello, I am TermoZour's RSS Bot. I can give you updates to RSS links! Type /help for a list of commands."
 
 stringURLadded = "Added URL to subscription"
