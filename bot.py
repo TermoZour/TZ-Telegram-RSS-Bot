@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 from telegram.ext import Updater, CommandHandler
+from telegram.utils.helpers import escape_markdown
 from telegram import ParseMode
+
+import telegram.constants
 
 import configparser
 import logging
@@ -25,17 +28,12 @@ config.read("properties.ini")
 # getting bot owner ID from config file
 owner_id = int(config.get("OWNER", "owner_id"))
 
-# ---
 
 def start(bot, update):
     update.effective_message.reply_text(strings.stringHelp)
 
 
-def unknown(bot, update):
-    update.effective_message.reply_text(strings.errorUnknownCommand)
-
-
-def help(bot, update):
+def help_message(bot, update):
 
     # gather all commands help messages from the strings.py file
     help_all = strings.help_message + strings.help_url + strings.help_list + strings.help_add + strings.help_remove
@@ -67,7 +65,6 @@ def server_ip(bot, update):
     else:
         update.effective_message.reply_text("I'm sorry " + user.first_name + ", but I can't let you do that.")
 
-# ---
 
 def show_url(bot, update, args):
     # gather telegram chat ID (might be the same as user ID if message is sent to the bot via PM)
@@ -116,9 +113,13 @@ def list_urls(bot, update):
     final_content = ""
 
     # this neatly arranges the links from links_list to be properly sent by the bot
-    final_content += "\n" + "\n\n".join(links_list)
+    final_content += "\n\n".join(links_list)
 
-    bot.send_message(chat_id=tg_chat_id, text= "This chat is subscribed to the following links:" + "\n" + final_content)
+    if len(final_content) <= telegram.constants.MAX_MESSAGE_LENGTH:
+        bot.send_message(chat_id=tg_chat_id, text= "This chat is subscribed to the following links:" + "\n" + final_content)
+    else:
+        bot.send_message(chat_id=tg_chat_id, text="*Warning: *" + strings.errorMsgLong)
+        print("\n" + "# Message too long for chat " + str(tg_chat_id))
 
 
 def add_url(bot, update, args):
@@ -181,6 +182,7 @@ def add_url(bot, update, args):
         else:
             update.effective_message.reply_text(strings.errorAdmin)
 
+
 def remove_url(bot, update, args):
     # check if there is anything written as argument (will give out of range if there's no argument)
     if len(args[0]) < 3:
@@ -235,7 +237,6 @@ def remove_url(bot, update, args):
             update.effective_message.reply_text(strings.errorAdmin)
 
 
-
 def rss_update(bot, job):
     # get all of the DB data
     user_data = SESSION.query(RSS_Feed).all()
@@ -287,24 +288,20 @@ def rss_update(bot, job):
 
         # this loop sends every new update to each user from each group based on the DB entries
         for link, title in zip(new_entry_links[::-1], new_entry_titles[::-1]):
-            print("\n" + "new entry: ")
-            # print("\n" + link)
-            # print("\n" + title)
-            # make the final message with the layout: "Title: <rss_feed_title> and Link: <rss_feed_link>"
-            final_message = "title: \"" + title + "\"" + "\n\n" + "link: " + link
-            print("\n" + final_message + "\n")
+            print("\n" + "# New entry from " + title + " with link " + link)
 
-            bot.send_message(chat_id=tg_chat_id, text=final_message)
+            # make the final message with the layout: "<rss_feed_title> <rss_feed_link>"
+            final_message = "*" + escape_markdown(title) + "*" + "\n\n" + "link: " + link
 
+            # check if the
+            if len(final_message) <= telegram.constants.MAX_MESSAGE_LENGTH:
+                print("\n" + final_message + "\n")
 
-# ---
+                bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
+            else:
+                bot.send_message(chat_id=tg_chat_id, text="*Warning: *" + strings.errorMsgLong)
+                print("\n" + "# Message too long for entry link " + link)
 
-def markdownTest(bot, update):
-    chat_id = update.effective_chat.id
-
-    bot.send_message(chat_id=chat_id, text="*bold* _italic_  `fixed width font` [link](http://google.com).", parse_mode=ParseMode.MARKDOWN)
-
-# ---
 
 BASE = declarative_base()
 
@@ -337,7 +334,6 @@ class RSS_Feed(BASE):
 
 BASE.metadata.create_all()
 
-# ---
 
 def main():
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -351,7 +347,7 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help))
+    dispatcher.add_handler(CommandHandler("help", help_message))
     dispatcher.add_handler(CommandHandler("ip", server_ip))
 
     dispatcher.add_handler(CommandHandler("url", show_url, pass_args=True))
@@ -359,8 +355,6 @@ def main():
     dispatcher.add_handler(CommandHandler("feed", rss_update))
 
     dispatcher.add_handler(CommandHandler("test", test))
-
-    dispatcher.add_handler(CommandHandler("markdown", markdownTest))
 
     dispatcher.add_handler(CommandHandler("add", add_url, pass_args=True))
     dispatcher.add_handler(CommandHandler("remove", remove_url, pass_args=True))
