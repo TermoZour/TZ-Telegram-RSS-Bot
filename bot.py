@@ -115,6 +115,7 @@ def list_urls(bot, update):
     # this neatly arranges the links from links_list to be properly sent by the bot
     final_content += "\n\n".join(links_list)
 
+    # check if the length of the message is too long to be posted in 1 chat bubble
     if len(final_content) <= telegram.constants.MAX_MESSAGE_LENGTH:
         bot.send_message(chat_id=tg_chat_id, text= "This chat is subscribed to the following links:" + "\n" + final_content)
     else:
@@ -291,9 +292,9 @@ def rss_update(bot, job):
             print("\n" + "# New entry from " + title + " with link " + link)
 
             # make the final message with the layout: "<rss_feed_title> <rss_feed_link>"
-            final_message = "*" + escape_markdown(title) + "*" + "\n\n" + "link: " + link
+            final_message = "*" + escape_markdown(title) + "*" + "\n\n" + link
 
-            # check if the
+            # check if the length of the message is too long to be posted in 1 chat bubble
             if len(final_message) <= telegram.constants.MAX_MESSAGE_LENGTH:
                 print("\n" + final_message + "\n")
 
