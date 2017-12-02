@@ -292,7 +292,7 @@ def rss_update(bot, job):
             print("\n" + "# New entry from " + title + " with link " + link)
 
             # make the final message with the layout: "<rss_feed_title> <rss_feed_link>"
-            final_message = "*" + escape_markdown(title) + "*" + "\n\n" + link
+            final_message = "*" + escape_markdown(title) + "*" + "\n\n" + escape_markdown(link)
 
             # check if the length of the message is too long to be posted in 1 chat bubble
             if len(final_message) <= telegram.constants.MAX_MESSAGE_LENGTH:
