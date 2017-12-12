@@ -54,10 +54,10 @@ def server_ip(bot, update):
     if tg_user_id == owner_id:
 
         # access the site
-        res = requests.get("http://ipinfo.io/ip")
+        row = requests.get("http://ipinfo.io/ip")
 
         # save the text into a variable to be sent later by the bot
-        ip = res.text
+        ip = row.text
 
         update.effective_message.reply_text("Server IP: " + ip)
     else:
@@ -157,10 +157,10 @@ def add_url(bot, update, args):
                 tg_old_entry_link = link_processed.entries[0].link
 
                 # gather the row which contains exactly that telegram user ID, group ID and link for later comparison
-                res = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.feed_link == tg_feed_link, RSS_Feed.chat_id == tg_chat_id).all()
+                row = SESSION.query(RSS_Feed).filter(RSS_Feed.user_id == tg_user_id, RSS_Feed.feed_link == tg_feed_link, RSS_Feed.chat_id == tg_chat_id).all()
 
                 # check if there is an entry already added to the DB by the same user in the same group with the same link
-                if res:
+                if row:
                     # there is already a link added to the DB
                     update.effective_message.reply_text(strings.stringURLalreadyAdded)
                 else:
@@ -293,17 +293,25 @@ def rss_update(bot, job):
         for link, title in zip(reversed(new_entry_links), reversed(new_entry_titles)):
             print("\n" + "# New entry from " + title + " with link " + link)
 
+            # check if there's any * in the title so that proper markdown can be applied
+            if '*' in title:
+                # there is a * in the title string
+
+                # strips the * from the title string
+                title.rstrip('*')
+            else:
+                # there is no * in the title string
+                break
             # make the final message with the layout: "<rss_feed_title> <rss_feed_link>"
-            final_message = escape_markdown(title) + "\n\n" + escape_markdown(link)
+            final_message = "*" + title + "*" + "\n\n" + escape_markdown(link)
 
             # check if the length of the message is too long to be posted in 1 chat bubble
             if len(final_message) <= telegram.constants.MAX_MESSAGE_LENGTH:
                 print("\n" + final_message + "\n")
-
                 bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
             else:
-                bot.send_message(chat_id=tg_chat_id, text="*Warning: *" + strings.errorMsgLong)
                 print("\n" + "# Message too long for entry link " + link)
+                bot.send_message(chat_id=tg_chat_id, text="*Warning: *" + strings.errorMsgLong)
 
 
 BASE = declarative_base()
