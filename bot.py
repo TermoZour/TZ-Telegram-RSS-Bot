@@ -19,8 +19,6 @@ from sqlalchemy import create_engine, Column, Integer, UnicodeText, UniqueConstr
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-# ---
-
 # initializing config file
 config = configparser.ConfigParser()
 config.read("properties.ini")
@@ -55,10 +53,10 @@ def server_ip(bot, update):
     # check if the sender's ID is the same as the owner's ID set in the config. for security purposes
     if tg_user_id == owner_id:
 
-        #access the site
+        # access the site
         res = requests.get("http://ipinfo.io/ip")
 
-        #save the text into a variable to be sent later by the bot
+        # save the text into a variable to be sent later by the bot
         ip = res.text
 
         update.effective_message.reply_text("Server IP: " + ip)
@@ -88,8 +86,8 @@ def show_url(bot, update, args):
         entry_description = link_processed.entries[0].description
         entry_link = link_processed.entries[0].link
 
-        final_message = "feed title: " + feed_title + "\n\n" + "feed description: " + feed_description + "\n\n" + "feed link: " + feed_link + "\n\n" + "entry title: " + entry_title + "\n\n" + "entry description: " + entry_description + "\n\n" + "entry link: " + entry_link
-        bot.send_message(chat_id=tg_chat_id, text=final_message)
+        final_message = "feed title: " + "*" + escape_markdown(feed_title) + "*" + "\n\n" + "feed description: " + escape_markdown(feed_description) + "\n\n" + "feed link: " + escape_markdown(feed_link) + "\n\n" + "entry title: " + "*" + escape_markdown(entry_title) + "*" + "\n\n" + "entry description: " + escape_markdown(entry_description) + "\n\n" + "entry link: " + escape_markdown(entry_link)
+        bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
 
 
 def list_urls(bot, update):
@@ -253,7 +251,7 @@ def rss_update(bot, job):
         # process the feed from DB
         feed_processed = feedparser.parse(tg_feed_link)
 
-        #get the last update's entry from the DB
+        # get the last update's entry from the DB
         tg_old_entry_link = row.old_entry_link
 
         # define empty list of entry links for when there's new updates to a RSS link
@@ -262,11 +260,16 @@ def rss_update(bot, job):
         # define empty list of entry titles for when there's new updates to a RSS link
         new_entry_titles = []
 
+        # define empty dictionary to queue messages to prevent spam from the bot
+        message_buffer = {}
+
+        # define empty list of final messages to prevent spam from the bot
+        final_message_list = []
+
         # this loop checks for every entry from the RSS Feed link from the DB row
         for entry in feed_processed.entries:
             # check if there are any new updates to the RSS Feed from the old entry
             if entry.link != tg_old_entry_link:
-
                 # there is a new entry, so it's link is added to the new_entry_links list for later usage
                 new_entry_links.append(entry.link)
 
@@ -274,7 +277,6 @@ def rss_update(bot, job):
                 new_entry_titles.append(entry.title)
             else:
                 break
-
 
         # check if there's any new entries queued from the last check
         if new_entry_links:
@@ -288,11 +290,11 @@ def rss_update(bot, job):
             print("\n" + "# No new updates for chat " + str(tg_chat_id) + " with link " + tg_feed_link + "\n")
 
         # this loop sends every new update to each user from each group based on the DB entries
-        for link, title in zip(new_entry_links[::-1], new_entry_titles[::-1]):
+        for link, title in zip(reversed(new_entry_links), reversed(new_entry_titles)):
             print("\n" + "# New entry from " + title + " with link " + link)
 
             # make the final message with the layout: "<rss_feed_title> <rss_feed_link>"
-            final_message = "*" + escape_markdown(title) + "*" + "\n\n" + escape_markdown(link)
+            final_message = escape_markdown(title) + "\n\n" + escape_markdown(link)
 
             # check if the length of the message is too long to be posted in 1 chat bubble
             if len(final_message) <= telegram.constants.MAX_MESSAGE_LENGTH:
