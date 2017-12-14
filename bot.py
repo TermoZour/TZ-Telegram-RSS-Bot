@@ -296,12 +296,14 @@ def rss_update(bot, job):
             # check if there's any * in the title so that proper markdown can be applied
             if '*' in title:
                 # there is a * in the title string
+                print("# Found * in title. Parsing...")
 
                 # strips the * from the title string
                 title.rstrip('*')
             else:
                 # there is no * in the title string
-                break
+                print("# No * found in title. Proceeding...")
+
             # make the final message with the layout: "<rss_feed_title> <rss_feed_link>"
             final_message = "*" + title + "*" + "\n\n" + escape_markdown(link)
 
