@@ -280,12 +280,6 @@ def rss_update(bot, job):
         # define empty list of entry titles for when there's new updates to a RSS link
         new_entry_titles = []
 
-        # define empty dictionary to queue messages to prevent spam from the bot
-        message_buffer = {}
-
-        # define empty list of final messages to prevent spam from the bot
-        final_message_list = []
-
         # this loop checks for every entry from the RSS Feed link from the DB row
         for entry in feed_processed.entries:
             # check if there are any new updates to the RSS Feed from the old entry
@@ -329,7 +323,7 @@ def rss_update(bot, job):
 
             # check if the length of the message is too long to be posted in 1 chat bubble
             if len(final_message) <= telegram.constants.MAX_MESSAGE_LENGTH:
-                print("\n" + final_message + "\n")
+                print("\n" + "# Check passed. Message doesn't exceed Telegram limit " + "\n")
                 bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
             else:
                 print("\n" + "# Message too long for entry link " + link)
