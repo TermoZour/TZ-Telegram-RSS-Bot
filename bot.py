@@ -32,7 +32,6 @@ def start(bot, update):
 
 
 def help_message(bot, update):
-
     # gather all commands help messages from the strings.py file
     help_all = strings.help_message + strings.help_url + strings.help_list + strings.help_add + strings.help_remove
 
@@ -52,7 +51,6 @@ def server_ip(bot, update):
 
     # check if the sender's ID is the same as the owner's ID set in the config. for security purposes
     if tg_user_id == owner_id:
-
         # access the site
         row = requests.get("http://ipinfo.io/ip")
 
@@ -86,7 +84,29 @@ def show_url(bot, update, args):
         entry_description = link_processed.entries[0].description
         entry_link = link_processed.entries[0].link
 
-        final_message = "feed title: " + "*" + escape_markdown(feed_title) + "*" + "\n\n" + "feed description: " + escape_markdown(feed_description) + "\n\n" + "feed link: " + escape_markdown(feed_link) + "\n\n" + "entry title: " + "*" + escape_markdown(entry_title) + "*" + "\n\n" + "entry description: " + escape_markdown(entry_description) + "\n\n" + "entry link: " + escape_markdown(entry_link)
+        # check if there's any * in the title so that proper markdown can be applied
+        if '*' in feed_title:
+            # there is a * in the title string
+            print("# Found * in feed title. Parsing...")
+
+            # strips the * from the title string
+            feed_title.rstrip('*')
+        else:
+            # there is no * in the title string
+            print("# No * found in feed title. Proceeding...")
+
+        # check if there's any * in the title so that proper markdown can be applied
+        if '*' in entry_title:
+            # there is a * in the title string
+            print("# Found * in entry title. Parsing...")
+
+            # strips the * from the title string
+            entry_title.rstrip('*')
+        else:
+            # there is no * in the title string
+            print("# No * found in entry title. Proceeding...")
+
+        final_message = "feed title: " + "*" + feed_title + "*" + "\n\n" + "feed description: " + escape_markdown(feed_description) + "\n\n" + "feed link: " + escape_markdown(feed_link) + "\n\n" + "entry title: " + "*" + entry_title + "*" + "\n\n" + "entry description: " + escape_markdown(entry_description) + "\n\n" + "entry link: " + escape_markdown(entry_link)
         bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.MARKDOWN)
 
 
